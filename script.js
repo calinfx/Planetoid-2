@@ -1,4 +1,3 @@
-
 // https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
 
 // Table of Contents:
@@ -370,14 +369,14 @@ jetpackButton.addEventListener('touchend', () => {
 });
 // - - - >> 8.07 - ended section 8
 
-// - - - >> 9.11 - Game Loop and Rendering
+// - - - >> 9.12 - Game Loop and Rendering
 
-// 9.11.00
+// 9.12.00
 const gravity = -0.05;
 let lastTime = 0;
 let gameStarted = false;
 
-// 9.11.01
+// 9.12.01
 function showGameUI() {
     document.getElementById('inventory-ui').style.display = 'grid';
     document.getElementById('inventory-toggle').style.display = 'block';
@@ -387,7 +386,7 @@ function showGameUI() {
     document.getElementById('joystick-container').style.display = 'flex';
 }
 
-// 9.11.02
+// 9.12.02
 function checkCollisions() {
     const playerBBox = new THREE.Box3().setFromCenterAndSize(
         player.position,
@@ -396,12 +395,12 @@ function checkCollisions() {
     player.isGrounded = false;
     let highestBlockUnderPlayer = -Infinity;
 
-    // 9.11.03
+    // 9.12.03
     world.children.forEach(block => {
         const blockBBox = new THREE.Box3().setFromObject(block);
         const blockTopY = blockBBox.max.y;
 
-        // 9.11.04
+        // 9.12.04
         // Check for horizontal collision with the player's next position
         const nextPlayerBBox = playerBBox.clone().translate(player.velocity);
         if (nextPlayerBBox.intersectsBox(blockBBox)) {
@@ -409,7 +408,7 @@ function checkCollisions() {
             const overlapX = Math.min(nextPlayerBBox.max.x, blockBBox.max.x) - Math.max(nextPlayerBBox.min.x, blockBBox.min.x);
             const overlapZ = Math.min(nextPlayerBBox.max.z, blockBBox.max.z) - Math.max(nextPlayerBBox.min.z, blockBBox.min.z);
 
-            // 9.11.05
+            // 9.12.05
             if (overlapX < overlapZ) {
                 player.velocity.x = 0;
             } else {
@@ -417,20 +416,20 @@ function checkCollisions() {
             }
         }
 
-        // 9.11.06
+        // 9.12.06
         // Check for blocks directly under the player to determine landing spot
         const isPlayerAboveBlock =
             player.position.x > blockBBox.min.x && player.position.x < blockBBox.max.x &&
             player.position.z > blockBBox.min.z && player.position.z < blockBBox.max.z &&
             blockTopY > highestBlockUnderPlayer;
 
-        // 9.11.07
+        // 9.12.07
         if (isPlayerAboveBlock) {
             highestBlockUnderPlayer = blockTopY;
         }
     });
 
-    // 9.11.08
+    // 9.12.08
     // Vertical collision: if player is falling and below the highest block under them, land on it
     if (player.velocity.y < 0 && player.position.y - player.height / 2 <= highestBlockUnderPlayer) {
         player.position.y = highestBlockUnderPlayer + player.height / 2;
@@ -438,63 +437,63 @@ function checkCollisions() {
         player.isGrounded = true;
     }
 
-    // 9.11.09
+    // 9.12.09
     if (gameStarted) {
         const worldBounds = new THREE.Box3(
             new THREE.Vector3(-currentWorldSize * currentChunkSize * 5, -Infinity, -currentWorldSize * currentChunkSize * 5),
             new THREE.Vector3(currentWorldSize * currentChunkSize * 5, Infinity, currentWorldSize * currentChunkSize * 5)
         );
 
-        // 9.11.10
+        // 9.12.10
         if (!worldBounds.containsPoint(player.position)) {
             player.position.clamp(worldBounds.min, worldBounds.max);
         }
     }
 }
 
-// 9.11.11
+// 9.12.11
 function animate(time) {
     requestAnimationFrame(animate);
     const deltaTime = (time - lastTime) / 1000;
     lastTime = time;
 
-    // 9.11.12
+    // 9.12.12
     if (gameStarted) {
         const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
         const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
         const moveDirection = new THREE.Vector3(0, 0, 0);
 
-        // 9.11.13
+        // 9.12.13
         if (moveJoystickActive) {
             const joystickVector = new THREE.Vector2().subVectors(moveTouch, moveJoystickCenter);
             joystickVector.normalize();
 
-            // 9.11.14
+            // 9.12.14
             moveDirection.x = -forward.x * joystickVector.y * player.speed;
             moveDirection.z = -forward.z * joystickVector.y * player.speed;
             moveDirection.x += right.x * joystickVector.x * player.speed;
             moveDirection.z += right.z * joystickVector.x * player.speed;
         }
 
-        // 9.11.15
+        // 9.12.15
         player.velocity.x = moveDirection.x;
         player.velocity.z = moveDirection.z;
 
-        // 9.11.16
+        // 9.12.16
         if (lookJoystickActive) {
             const dx = lookTouch.x - lookJoystickCenter.x;
             const dy = lookTouch.y - lookJoystickCenter.y;
 
-            // 9.11.17
+            // 9.12.17
             camera.rotation.y -= dx * player.rotationSpeed;
             camera.rotation.x -= dy * player.rotationSpeed;
 
-            // 9.11.18
+            // 9.12.18
             const verticalAngleLimit = THREE.MathUtils.degToRad(70);
             camera.rotation.x = Math.max(-verticalAngleLimit, Math.min(verticalAngleLimit, camera.rotation.x));
         }
 
-        // 9.11.19
+        // 9.12.19
         if (jetpackActive) {
             player.velocity.y += player.jetpackAcceleration;
             if (player.velocity.y > player.jetpackSpeed) {
@@ -504,25 +503,24 @@ function animate(time) {
             player.velocity.y += gravity;
         }
 
-        // 9.11.20
+        // 9.12.20
         player.position.add(player.velocity);
         checkCollisions();
         
-        // 9.11.21
+        // 9.12.21
         camera.position.copy(player.position).add(new THREE.Vector3(0, player.height, 0));
     }
     renderer.render(scene, camera);
 }
 
-// 9.11.22
+// 9.12.22
 window.addEventListener('gameStart', () => {
     gameStarted = true;
     showGameUI();
 });
 
-// 9.11.23
-startGame(0); // Start the game with the smallest world by default
+// 9.12.23
+startGame(0);
 
 animate();
-// - - - >> 9.11 - ended section 9
-
+// - - - >> 9.12 - ended section 9
