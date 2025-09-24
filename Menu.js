@@ -26,6 +26,19 @@ function startGame(sizeIndex) {
 }
 
 // Event listeners for the menu buttons
-sizeSmallButton.addEventListener('click', () => startGame(0));
-sizeMediumButton.addEventListener('click', () => startGame(1));
-sizeLargeButton.addEventListener('click', () => startGame(2));
+if (sizeSmallButton) {
+  sizeSmallButton.addEventListener('click', () => startGame(0));
+}
+if (sizeMediumButton) {
+  sizeMediumButton.addEventListener('click', () => startGame(1));
+}
+if (sizeLargeButton) {
+  sizeLargeButton.addEventListener('click', () => startGame(2));
+}
+
+// You need this line to start the game by default with the smallest world
+if (window.location.href.includes('codepen.io/')) {
+    setTimeout(() => startGame(0), 1000);
+} else {
+    startGame(0);
+}
