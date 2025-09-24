@@ -47,6 +47,25 @@ window.addEventListener('resize', () => {
 });
 // - - - >> 1.00 - ended section 1
 
+// - - - >> 1.01 - Background Objects
+
+// 1.01.00
+function createSphere(radius, color, x, y, z) {
+    const geometry = new THREE.SphereGeometry(radius, 32, 32);
+    const material = new THREE.MeshPhongMaterial({ color: color });
+    const sphere = new THREE.Mesh(geometry, material);
+    sphere.position.set(x, y, z);
+    scene.add(sphere);
+    return sphere;
+}
+
+// 1.01.01
+createSphere(10, 0x00FFFF, 20, 20, -50);
+createSphere(5, 0x8A2BE2, -30, 10, -40);
+createSphere(8, 0x4B0082, 40, -10, -60);
+// - - - >> 1.01 - ended section 1.01
+
+
 // - - - >> 2.02 - Hexagonal Block Geometry
 
 // 2.02.00
@@ -484,4 +503,5 @@ animate();
 // - - - >> 9.09 - ended section 9
 
 // https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+
 
