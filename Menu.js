@@ -10,10 +10,11 @@ const sizeMediumButton = document.getElementById('size-medium');
 const sizeLargeButton = document.getElementById('size-large');
 
 function startGame(sizeIndex) {
-    settingsMenu.style.display = 'none';
+    if (settingsMenu) {
+        settingsMenu.style.display = 'none';
+    }
     const selectedSize = worldSizeOptions[sizeIndex];
     
-    // This is a custom event that 'script.js' will listen for
     const startEvent = new CustomEvent('gameStart', {
         detail: {
             chunkSize: selectedSize.chunkSize,
@@ -24,6 +25,7 @@ function startGame(sizeIndex) {
     window.dispatchEvent(startEvent);
 }
 
+// Event listeners for the menu buttons
 sizeSmallButton.addEventListener('click', () => startGame(0));
 sizeMediumButton.addEventListener('click', () => startGame(1));
 sizeLargeButton.addEventListener('click', () => startGame(2));
