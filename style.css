@@ -1,0 +1,125 @@
+body, html {
+    /* 1.00.00 */
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #0a001a;
+    font-family: sans-serif;
+    color: white;
+}
+
+#inventory-ui {
+    /* 1.00.01 */
+    position: fixed;
+    bottom: 130px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    grid-template-columns: repeat(6, 35px);
+    grid-template-rows: repeat(2, 35px);
+    /* 1.00.02 */
+    gap: 3px;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 3px;
+    border-radius: 5px;
+    z-index: 100;
+}
+
+#inventory-ui div {
+    /* 1.00.03 */
+    width: 35px;
+    height: 35px;
+    border: 2px solid #8A2BE2;
+    border-radius: 3px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* 1.00.04 */
+    color: #E0BBE4;
+    font-size: 0.7em;
+    font-family: monospace;
+}
+
+#inventory-toggle {
+    /* 1.00.05 */
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    /* 1.00.06 */
+    background-color: #8A2BE2;
+    border: 2px solid #4a008a;
+    z-index: 102;
+    cursor: pointer;
+}
+
+#jetpack-button {
+    /* 1.00.07 */
+    position: fixed;
+    bottom: 170px;
+    right: 30px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background-color: #FF0000;
+    border: 2px solid #8B0000;
+    z-index: 102;
+    cursor: pointer;
+}
+
+#zoom-toggle {
+    /* 1.00.08 */
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #F8B400;
+    border: 2px solid #B78700;
+    z-index: 102;
+    cursor: pointer;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+#zoom-toggle.locked {
+    /* 1.00.09 */
+    background-color: #008A00;
+    border-color: #004d00;
+}
+
+#joystick-container {
+    /* 1.00.10 */
+    position: fixed;
+    bottom: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 20px;
+    box-sizing: border-box;
+    /* 1.00.11 */
+    z-index: 101;
+}
+
+#move-joystick {
+    /* 1.00.12 */
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background-color: rgba(138, 43, 226, 0.4);
+    border: 2px solid #8A2BE2;
+    position: relative;
+}
+
+#look-joystick {
+    /* 1.00.13 */
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background-color: rgba(0, 206, 209, 0.4);
+    border: 2px solid #00CED1;
+    position: relative;
+}
