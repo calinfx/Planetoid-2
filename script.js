@@ -72,23 +72,17 @@ function createHexagonalBlock(x, y, z, color) {
 }
 // - - - >> 2.02 - ended section 2
 
-// - - - >> 3.02 - World Generation and Chunking
+// - - - >> 3.05 - World Generation and Chunking
 
-// 3.02.00
-const worldSizeOptions = [
-  { chunkSize: 8, worldSize: 2 },
-  { chunkSize: 10, worldSize: 3 },
-  { chunkSize: 12, worldSize: 4 }
-];
-const selectedSize = 0;
-const chunkSize = worldSizeOptions[selectedSize].chunkSize;
-const worldSize = worldSizeOptions[selectedSize].worldSize;
-
-// 3.02.01
+// 3.05.00
 const world = new THREE.Group();
 scene.add(world);
 
-// 3.02.02
+// 3.05.01
+let currentChunkSize = 0;
+let currentWorldSize = 0;
+
+// 3.05.02
 function generateChunk(chunkX, chunkZ) {
     const colors = [
         0x8A2BE2, // Blue Violet (Purple)
@@ -100,13 +94,13 @@ function generateChunk(chunkX, chunkZ) {
         0xFFA500, // Orange
     ];
 
-    for (let i = 0; i < chunkSize; i++) {
-        for (let j = 0; j < chunkSize; j++) {
-            const globalX = chunkX * chunkSize + i;
-            const globalZ = chunkZ * chunkSize + j;
+    for (let i = 0; i < currentChunkSize; i++) {
+        for (let j = 0; j < currentChunkSize; j++) {
+            const globalX = chunkX * currentChunkSize + i;
+            const globalZ = chunkZ * currentChunkSize + j;
             const height = Math.floor(Math.random() * 3);
 
-            // 3.02.03
+            // 3.05.03
             for (let k = 0; k <= height; k++) {
                 let blockColor;
                 if (Math.random() < 0.1) {
@@ -121,13 +115,19 @@ function generateChunk(chunkX, chunkZ) {
     }
 }
 
-// 3.02.04
-for (let cx = -worldSize; cx <= worldSize; cx++) {
-    for (let cz = -worldSize; cz <= worldSize; cz++) {
-        generateChunk(cx, cz);
+// 3.05.04
+window.addEventListener('gameStart', (event) => {
+    currentChunkSize = event.detail.chunkSize;
+    currentWorldSize = event.detail.worldSize;
+
+    for (let cx = -currentWorldSize; cx <= currentWorldSize; cx++) {
+        for (let cz = -currentWorldSize; cz <= currentWorldSize; cz++) {
+            generateChunk(cx, cz);
+        }
     }
-}
-// - - - >> 3.02 - ended section 3
+});
+// - - - >> 3.05 - ended section 3
+
 
 // - - - >> 4.00 - Lighting, Materials, and Post-Processing
 
@@ -484,3 +484,4 @@ animate();
 // - - - >> 9.09 - ended section 9
 
 // https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+
