@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D julu Tool</title>
+    <title>Extro v0.1</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; touch-action: none; }
@@ -18,6 +18,7 @@
             font-family: Arial, sans-serif;
             z-index: 100;
             display: flex;
+            flex-direction: column;
             gap: 10px;
         }
         button {
@@ -28,19 +29,26 @@
             border-radius: 3px;
             cursor: pointer;
         }
+        #version {
+            font-size: 12px;
+            color: #ff6600;
+        }
     </style>
 </head>
 <body>
     <div id="ui">
-        <button id="snapToggle">Snap: ON</button>
-        <button id="commit">Commit</button>
+        <div>
+            <button id="snapToggle">Snap: ON</button>
+            <button id="commit">Commit</button>
+        </div>
+        <div id="version">Version 0.1</div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000000); // Black background
+        scene.background = new THREE.Color(0x000000);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(5, 5, 5);
@@ -49,7 +57,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // OrbitControls for mobile-friendly camera movement
+        // OrbitControls
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.25;
@@ -59,7 +67,7 @@
         controls.maxPolarAngle = Math.PI;
 
         // Grid and axes
-        const gridHelper = new THREE.GridHelper(10, 10, 0x660066, 0x330033); // Violet grid
+        const gridHelper = new THREE.GridHelper(10, 10, 0x660066, 0x330033);
         scene.add(gridHelper);
 
         const axesHelper = new THREE.AxesHelper(5);
@@ -74,7 +82,7 @@
         directionalLight.position.set(1, 1, 1);
         scene.add(directionalLight);
 
-        // Variables for rectangle and handles
+        // Variables
         let rectangle = null;
         let extrusionHandle = null;
         let isSnapping = true;
@@ -106,7 +114,7 @@
             const depth = Math.abs(z2 - z1);
 
             const geometry = new THREE.BoxGeometry(width, height, depth);
-            const material = new THREE.MeshBasicMaterial({ color: 0x4B0082 }); // Dark purple
+            const material = new THREE.MeshBasicMaterial({ color: 0x4B0082 });
             rectangle = new THREE.Mesh(geometry, material);
             rectangle.position.set((x1 + x2) / 2, 0, (z1 + z2) / 2);
             scene.add(rectangle);
@@ -145,75 +153,76 @@
                 selectedHandles.push(handle);
             });
 
-            // Add extrusion handle (neon green cube)
+            // Add extrusion handle (neon green cube, no wireframe)
             const extrusionGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-            const extrusionMaterial = new THREE.MeshBasicMaterial({ color: 0x32CD32, wireframe: true });
+            const extrusionMaterial = new THREE.MeshBasicMaterial({ color: 0x32CD32 });
             extrusionHandle = new THREE.Mesh(extrusionGeometry, extrusionMaterial);
             extrusionHandle.position.set((x1 + x2) / 2, 0.1, (z1 + z2) / 2);
             scene.add(extrusionHandle);
         }
 
-        // Touch controls for mobile
+        // Touch controls
         renderer.domElement.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) return; // Ignore if two fingers are touching (pinch zoom)
+            if (e.touches.length !== 1) return;
             e.preventDefault();
             const touch = e.touches[0];
             mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(selectedHandles);
+            const intersects = raycaster.intersectObjects([...selectedHandles, extrusionHandle]);
             if (intersects.length > 0) {
                 selectedHandle = intersects[0].object;
-                // Highlight selected handle
-                if (selectedHandle.userData.type === 'corner') {
-                    selectedHandle.material.color.setHex(0xcc5500); // Darker orange
+                if (selectedHandle === extrusionHandle) {
+                    selectedHandle.material.color.setHex(0xff6600); // Orange when selected
                 } else {
-                    selectedHandle.material.color.setHex(0xcc00cc); // Darker magenta
+                    selectedHandle.material.color.setHex(selectedHandle.userData.type === 'corner' ? 0xcc5500 : 0xcc00cc);
                 }
-            } else {
-                const extrusionIntersects = raycaster.intersectObject(extrusionHandle);
-                if (extrusionIntersects.length > 0) {
-                    selectedHandle = extrusionHandle;
-                }
+                controls.enabled = false; // Disable orbit controls while dragging
             }
         }, { passive: false });
 
         renderer.domElement.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2) return; // Ignore if two fingers are touching (pinch zoom)
+            if (e.touches.length !== 1 || !selectedHandle) return;
             e.preventDefault();
-            if (selectedHandle) {
-                const touch = e.touches[0];
-                mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+            const touch = e.touches[0];
+            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObject(plane);
-                if (intersects.length > 0) {
-                    const point = intersects[0].point;
-                    if (selectedHandle === extrusionHandle) {
-                        // Extrude the rectangle
-                        const height = point.y;
-                        rectangle.scale.y = height;
-                        rectangle.position.y = height / 2;
-                    } else {
-                        // Move the handle and resize the rectangle
-                        selectedHandle.position.set(point.x, 0.02, point.z);
-                        updateRectangle();
-                    }
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(plane);
+            if (intersects.length > 0) {
+                let point = intersects[0].point;
+                
+                // Apply snapping if enabled
+                if (isSnapping) {
+                    point.x = Math.round(point.x);
+                    point.z = Math.round(point.z);
+                }
+
+                if (selectedHandle === extrusionHandle) {
+                    // Extrude the rectangle
+                    const height = Math.max(0.01, point.y); // Prevent negative height
+                    rectangle.scale.y = height;
+                    rectangle.position.y = height / 2;
+                    selectedHandle.position.set(rectangle.position.x, height, rectangle.position.z);
+                } else {
+                    // Move the handle
+                    selectedHandle.position.set(point.x, 0.02, point.z);
+                    updateRectangle();
                 }
             }
         }, { passive: false });
 
         renderer.domElement.addEventListener('touchend', () => {
             if (selectedHandle) {
-                // Reset handle color
-                selectedHandle.material.color.setHex(selectedHandle.userData.originalColor);
+                selectedHandle.material.color.setHex(selectedHandle.userData.originalColor || 0x32CD32);
                 selectedHandle = null;
+                controls.enabled = true; // Re-enable orbit controls
             }
         }, { passive: false });
 
-        // Update rectangle geometry based on handle positions
+        // Update rectangle geometry
         function updateRectangle() {
             const handlePositions = selectedHandles.map(handle => handle.position);
             const xPositions = handlePositions.map(pos => pos.x);
@@ -223,15 +232,15 @@
             const minZ = Math.min(...zPositions);
             const maxZ = Math.max(...zPositions);
 
-            const width = maxX - minX;
-            const depth = maxZ - minZ;
+            const width = Math.max(0.01, maxX - minX); // Prevent zero width
+            const depth = Math.max(0.01, maxZ - minZ); // Prevent zero depth
 
             rectangle.geometry.dispose();
             rectangle.geometry = new THREE.BoxGeometry(width, rectangle.scale.y, depth);
             rectangle.position.set((minX + maxX) / 2, rectangle.position.y, (minZ + maxZ) / 2);
 
             // Update extrusion handle position
-            extrusionHandle.position.set((minX + maxX) / 2, 0.1, (minZ + maxZ) / 2);
+            extrusionHandle.position.set((minX + maxX) / 2, rectangle.scale.y, (minZ + maxZ) / 2);
         }
 
         // Animation loop
@@ -251,7 +260,7 @@
         // Start animation
         animate();
 
-        // Example: Create a rectangle
+        // Create initial rectangle
         createRectangle(-1, -1, 1, 1);
     </script>
 </body>
