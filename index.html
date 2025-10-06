@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Extrusion 0.2</title>
+    <title>3D Extrusion 3</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -154,6 +154,12 @@
             if (intersects.length > 0) {
                 selectedHandle = intersects[0].object;
                 controls.enabled = false; // Disable orbit controls while dragging handles
+            } else {
+                const extrusionIntersects = raycaster.intersectObject(extrusionHandle);
+                if (extrusionIntersects.length > 0) {
+                    selectedHandle = extrusionHandle;
+                    controls.enabled = false;
+                }
             }
         }, { passive: false });
 
@@ -168,7 +174,16 @@
                 const intersects = raycaster.intersectObject(plane);
                 if (intersects.length > 0) {
                     const point = intersects[0].point;
-                    selectedHandle.position.set(point.x, 0.02, point.z);
+                    if (selectedHandle === extrusionHandle) {
+                        // Extrude the rectangle
+                        const height = point.y;
+                        rectangle.scale.y = height;
+                        rectangle.position.y = height / 2;
+                    } else {
+                        // Move the handle and resize the rectangle
+                        selectedHandle.position.set(point.x, 0.02, point.z);
+                        updateRectangle();
+                    }
                 }
             }
         }, { passive: false });
@@ -177,6 +192,27 @@
             selectedHandle = null;
             controls.enabled = true; // Re-enable orbit controls
         }, { passive: false });
+
+        // Update rectangle geometry based on handle positions
+        function updateRectangle() {
+            const handlePositions = selectedHandles.map(handle => handle.position);
+            const xPositions = handlePositions.map(pos => pos.x);
+            const zPositions = handlePositions.map(pos => pos.z);
+            const minX = Math.min(...xPositions);
+            const maxX = Math.max(...xPositions);
+            const minZ = Math.min(...zPositions);
+            const maxZ = Math.max(...zPositions);
+
+            const width = maxX - minX;
+            const depth = maxZ - minZ;
+
+            rectangle.geometry.dispose();
+            rectangle.geometry = new THREE.BoxGeometry(width, rectangle.scale.y, depth);
+            rectangle.position.set((minX + maxX) / 2, rectangle.position.y, (minZ + maxZ) / 2);
+
+            // Update extrusion handle position
+            extrusionHandle.position.set((minX + maxX) / 2, 0.1, (minZ + maxZ) / 2);
+        }
 
         // Animation loop
         function animate() {
