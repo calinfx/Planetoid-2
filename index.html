@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D  Tool</title>
+    <title>3D julu Tool</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; touch-action: none; }
@@ -155,6 +155,7 @@
 
         // Touch controls for mobile
         renderer.domElement.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) return; // Ignore if two fingers are touching (pinch zoom)
             e.preventDefault();
             const touch = e.touches[0];
             mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
@@ -170,17 +171,16 @@
                 } else {
                     selectedHandle.material.color.setHex(0xcc00cc); // Darker magenta
                 }
-                controls.enabled = false;
             } else {
                 const extrusionIntersects = raycaster.intersectObject(extrusionHandle);
                 if (extrusionIntersects.length > 0) {
                     selectedHandle = extrusionHandle;
-                    controls.enabled = false;
                 }
             }
         }, { passive: false });
 
         renderer.domElement.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) return; // Ignore if two fingers are touching (pinch zoom)
             e.preventDefault();
             if (selectedHandle) {
                 const touch = e.touches[0];
@@ -211,7 +211,6 @@
                 selectedHandle.material.color.setHex(selectedHandle.userData.originalColor);
                 selectedHandle = null;
             }
-            controls.enabled = true;
         }, { passive: false });
 
         // Update rectangle geometry based on handle positions
