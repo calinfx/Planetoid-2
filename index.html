@@ -3,12 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Extrusion Tool</title>
+    <title>Xtro V0.1</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background-color: #000;
+        }
+        #version {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #ff8c00;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            z-index: 100;
         }
         #drawButton {
             position: absolute;
@@ -41,6 +50,7 @@
     </style>
 </head>
 <body>
+    <div id="version">v0.1</div>
     <button id="drawButton"></button>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
@@ -63,15 +73,15 @@
         controls.maxDistance = 50;
         controls.maxPolarAngle = Math.PI;
 
-        // Grid
+        // Grid (brighter purple)
         const gridSize = 20;
         const gridDivisions = 20;
-        const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x800080, 0x800080);
-        gridHelper.material.opacity = 0.5;
+        const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x9932cc, 0x9932cc);
+        gridHelper.material.opacity = 0.7;
         gridHelper.material.transparent = true;
         scene.add(gridHelper);
 
-        // Center lines
+        // Center lines (magenta)
         const centerLineMaterial = new THREE.LineBasicMaterial({ color: 0xff00ff });
         const centerLineGeometry = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(-gridSize/2, 0, 0), new THREE.Vector3(gridSize/2, 0, 0),
@@ -86,32 +96,32 @@
         let drawEnd = null;
         let tempRectangle = null;
         const drawButton = document.getElementById('drawButton');
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
 
         drawButton.addEventListener('click', () => {
             isDrawing = !isDrawing;
             drawButton.classList.toggle('active', isDrawing);
+            controls.enabled = !isDrawing;
             if (!isDrawing && tempRectangle) {
                 scene.remove(tempRectangle);
                 tempRectangle = null;
             }
         });
 
-        // Raycaster for plane intersection
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        const planeIntersect = new THREE.Vector3();
-
         function onMouseMove(event) {
             if (!isDrawing) return;
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            raycaster.ray.intersectPlane(plane, planeIntersect);
-
-            if (drawStart) {
-                drawEnd = planeIntersect.clone();
-                updateTempRectangle();
+            const intersects = raycaster.intersectObject(gridHelper);
+            if (intersects.length > 0) {
+                const intersect = intersects[0].point;
+                if (drawStart) {
+                    drawEnd = intersect.clone();
+                    updateTempRectangle();
+                }
             }
         }
 
@@ -120,13 +130,22 @@
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            raycaster.ray.intersectPlane(plane, planeIntersect);
-            drawStart = planeIntersect.clone();
+            const intersects = raycaster.intersectObject(gridHelper);
+            if (intersects.length > 0) {
+                drawStart = intersects[0].point.clone();
+            }
         }
 
         function onMouseUp() {
-            if (!isDrawing || !drawStart || !drawEnd) return;
-            createRectangle(drawStart, drawEnd);
+            if (!isDrawing || !drawStart) return;
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(gridHelper);
+            if (intersects.length > 0) {
+                drawEnd = intersects[0].point.clone();
+                createRectangle(drawStart, drawEnd);
+            }
             drawStart = null;
             drawEnd = null;
             if (tempRectangle) {
@@ -145,7 +164,7 @@
             const z = Math.min(drawStart.z, drawEnd.z) + height / 2;
             const geometry = new THREE.BoxGeometry(width, 0.1, height);
             const material = new THREE.MeshBasicMaterial({
-                color: 0x800080,
+                color: 0x9932cc,
                 transparent: true,
                 opacity: 0.5,
                 side: THREE.DoubleSide
@@ -162,7 +181,7 @@
             const z = Math.min(start.z, end.z) + height / 2;
             const geometry = new THREE.BoxGeometry(width, 0.1, height);
             const material = new THREE.MeshBasicMaterial({
-                color: 0x800080,
+                color: 0x9932cc,
                 transparent: false,
                 side: THREE.DoubleSide
             });
