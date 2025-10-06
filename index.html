@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Extro v0.2</title>
+    <title>Extro v0.3</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; touch-action: none; }
@@ -41,7 +41,7 @@
             <button id="snapToggle">Snap: ON</button>
             <button id="commit">Commit</button>
         </div>
-        <div id="version">Version 0.2</div>
+        <div id="version">Version 0.3</div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
@@ -123,12 +123,12 @@
             // Corner handles (orange rings)
             const cornerHandleGeometry = new THREE.RingGeometry(0.1, 0.12, 32);
             const cornerHandleMaterial = new THREE.MeshBasicMaterial({ color: 0xff6600, side: THREE.DoubleSide });
-            const cornerSelectedMaterial = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide });
+            const cornerSelectedMaterial = new THREE.MeshBasicMaterial({ color: 0xff4500 });
 
             // Edge handles (magenta rings)
             const edgeHandleGeometry = new THREE.RingGeometry(0.07, 0.09, 32);
             const edgeHandleMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide });
-            const edgeSelectedMaterial = new THREE.MeshBasicMaterial({ color: 0xcc00cc, side: THREE.DoubleSide });
+            const edgeSelectedMaterial = new THREE.MeshBasicMaterial({ color: 0xcc00cc });
 
             // Invisible hit area for better raycasting
             const hitAreaGeometry = new THREE.SphereGeometry(0.15, 16, 16);
@@ -219,14 +219,19 @@
             const intersects = raycaster.intersectObject(plane);
             if (intersects.length > 0) {
                 let point = intersects[0].point;
-                if (isSnapping) {
+                if (isSnapping && selectedHandle !== extrusionHandle) {
                     point.x = Math.round(point.x);
                     point.z = Math.round(point.z);
                 }
 
                 if (selectedHandle === extrusionHandle) {
-                    const height = Math.max(0.01, point.y);
-                    rectangle.scale.y = height / rectangle.geometry.parameters.height;
+                    const height = Math.max(0.01, point.y); // Prevent negative height
+                    rectangle.geometry.dispose();
+                    rectangle.geometry = new THREE.BoxGeometry(
+                        rectangle.geometry.parameters.width,
+                        height,
+                        rectangle.geometry.parameters.depth
+                    );
                     rectangle.position.y = height / 2;
                     selectedHandle.position.set(rectangle.position.x, height, rectangle.position.z);
                 } else {
@@ -258,7 +263,7 @@
 
             const width = Math.max(0.01, maxX - minX);
             const depth = Math.max(0.01, maxZ - minZ);
-            const height = rectangle.scale.y * rectangle.geometry.parameters.height;
+            const height = rectangle.geometry.parameters.height;
 
             rectangle.geometry.dispose();
             rectangle.geometry = new THREE.BoxGeometry(width, height, depth);
