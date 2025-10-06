@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Extro v0.4</title>
+    <title>Extro v0.5</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; touch-action: none; }
@@ -41,7 +41,7 @@
             <button id="snapToggle">Snap: ON</button>
             <button id="commit">Commit</button>
         </div>
-        <div id="version">Version 0.4</div>
+        <div id="version">Version 0.5</div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
@@ -75,7 +75,7 @@
         scene.add(axesHelper);
 
         // Lighting
-        const ambientLight = new THREE.AmbientLight(0x402040); // Purple tint instead of gray
+        const ambientLight = new THREE.AmbientLight(0x402040);
         scene.add(ambientLight);
 
         const directionalLight = new THREE.DirectionalLight(0xffff00, 0.5);
@@ -89,6 +89,7 @@
         let selectedHandles = [];
         let handleHitAreas = [];
         let selectedHandle = null;
+        let guideLines = [];
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         let plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -109,6 +110,15 @@
         commitButton.addEventListener('click', () => {
             alert('Shape committed!');
         });
+
+        // Create guide line
+        function createGuideLine(start, direction) {
+            const material = new THREE.LineBasicMaterial({ color: 0x40E0D0 }); // Turquoise
+            const geometry = new THREE.BufferGeometry().setFromPoints([start, new THREE.Vector3(1000, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), direction)]);
+            const line = new THREE.Line(geometry, material);
+            scene.add(line);
+            return line;
+        }
 
         // Create rectangle with handles
         function createRectangle(x1, z1, x2, z2) {
@@ -199,6 +209,35 @@
             scene.add(extrusionHandle);
         }
 
+        // Update rectangle edges brightness
+        function updateEdgeBrightness(selectedIndex) {
+            const edgeMaterial = rectangle.material;
+            if (edgeMaterial instanceof THREE.MeshBasicMaterial) {
+                const baseColor = new THREE.Color(0x4B0082); // Original color
+                const brightColor = baseColor.clone().multiplyScalar(1.5).clamp(0, 1); // Brighten by 50%
+                edgeMaterial.color = selectedIndex !== null ? brightColor : baseColor;
+            }
+        }
+
+        // Update guide lines
+        function updateGuideLines(selectedHandle) {
+            guideLines.forEach(line => scene.remove(line));
+            guideLines = [];
+            if (selectedHandle && selectedHandle.userData.type !== 'corner') {
+                const pos = selectedHandle.position.clone();
+                const edge = selectedHandle.userData.edge;
+                const dir = edge === 'left' || edge === 'right' ? Math.PI / 2 : 0;
+                const line1 = createGuideLine(pos, dir);
+                const line2 = createGuideLine(pos, dir + Math.PI);
+                guideLines.push(line1, line2);
+            } else if (selectedHandle && selectedHandle.userData.type === 'corner') {
+                const pos = selectedHandle.position.clone();
+                const line1 = createGuideLine(pos, 0); // Along x-axis
+                const line2 = createGuideLine(pos, Math.PI / 2); // Along z-axis
+                guideLines.push(line1, line2);
+            }
+        }
+
         // Touch controls
         renderer.domElement.addEventListener('touchstart', (e) => {
             if (e.touches.length !== 1) return;
@@ -211,14 +250,28 @@
             const intersects = raycaster.intersectObjects([...handleHitAreas, extrusionHandle]);
             if (intersects.length > 0) {
                 const obj = intersects[0].object;
-                selectedHandle = obj.userData.linkedHandle || obj;
-                selectedHandle.geometry = selectedHandle.userData.selectedGeometry;
-                selectedHandle.material = selectedHandle.userData.selectedMaterial;
-                controls.enabled = false;
-                if (selectedHandle === extrusionHandle) {
+                const handle = obj.userData.linkedHandle || obj;
+                if (handle !== selectedHandle) {
+                    if (selectedHandle) {
+                        selectedHandle.geometry = selectedHandle.userData.originalGeometry;
+                        selectedHandle.material = selectedHandle.userData.originalMaterial;
+                        updateEdgeBrightness(null);
+                        updateGuideLines(null);
+                    }
+                    selectedHandle = handle;
+                    selectedHandle.geometry = selectedHandle.userData.selectedGeometry;
+                    selectedHandle.material = selectedHandle.userData.selectedMaterial;
+                    updateEdgeBrightness(selectedHandle.userData.index);
+                    updateGuideLines(selectedHandle);
                     initialMouse.copy(mouse);
                     initialHeight = rectangle.geometry.parameters.height;
                 }
+            } else if (selectedHandle) {
+                selectedHandle.geometry = selectedHandle.userData.originalGeometry;
+                selectedHandle.material = selectedHandle.userData.originalMaterial;
+                updateEdgeBrightness(null);
+                updateGuideLines(null);
+                selectedHandle = null;
             }
         }, { passive: false });
 
@@ -230,20 +283,18 @@
             mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
             if (selectedHandle === extrusionHandle) {
-                // Calculate screen projection of y-axis
                 const pos = extrusionHandle.position.clone();
                 const posScreen = pos.clone().project(camera);
                 const posYScreen = pos.clone().add(new THREE.Vector3(0, 1, 0)).project(camera);
                 const dirScreen = posYScreen.clone().sub(posScreen);
                 const unitLength = dirScreen.length();
-                if (unitLength === 0) return; // Avoid division by zero
+                if (unitLength === 0) return;
                 dirScreen.normalize();
                 const mouseDelta = mouse.clone().sub(initialMouse);
                 const projDelta = mouseDelta.dot(dirScreen);
                 const worldDelta = projDelta / unitLength;
                 let newHeight = Math.max(0.01, initialHeight + worldDelta);
 
-                // Update rectangle geometry and position
                 const currentWidth = rectangle.geometry.parameters.width;
                 const currentDepth = rectangle.geometry.parameters.depth;
                 rectangle.geometry.dispose();
@@ -251,7 +302,6 @@
                 rectangle.position.y = newHeight / 2;
                 extrusionHandle.position.y = newHeight + 0.1;
             } else {
-                // Handle corner and edge moves
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObject(plane);
                 if (intersects.length > 0) {
@@ -262,7 +312,7 @@
                     }
                     if (selectedHandle.userData.type === 'corner') {
                         selectedHandle.position.set(point.x, 0.02, point.z);
-                    } else { // edge
+                    } else {
                         const edge = selectedHandle.userData.edge;
                         let newVal = (edge === 'left' || edge === 'right') ? point.x : point.z;
                         if (edge === 'left' || edge === 'right') {
@@ -270,12 +320,11 @@
                         } else {
                             selectedHandle.position.z = newVal;
                         }
-                        // Update corresponding corners
                         let cornerIndices;
                         switch (edge) {
                             case 'left': cornerIndices = [0, 2]; break;
                             case 'right': cornerIndices = [1, 3]; break;
-                            case 'top': cornerIndices = [2, 3]; break; // Assuming z max is top
+                            case 'top': cornerIndices = [2, 3]; break;
                             case 'bottom': cornerIndices = [0, 1]; break;
                         }
                         cornerIndices.forEach(idx => {
@@ -289,20 +338,17 @@
                             if (cornerHit) cornerHit.position.copy(corner.position);
                         });
                     }
-                    // Update hit area for selected handle
                     const linkedHit = handleHitAreas.find(h => h.userData.linkedHandle === selectedHandle);
                     if (linkedHit) linkedHit.position.copy(selectedHandle.position);
                     updateRectangle();
+                    updateGuideLines(selectedHandle);
                 }
             }
         }, { passive: false });
 
-        renderer.domElement.addEventListener('touchend', () => {
-            if (selectedHandle) {
-                selectedHandle.geometry = selectedHandle.userData.originalGeometry;
-                selectedHandle.material = selectedHandle.userData.originalMaterial;
-                selectedHandle = null;
-                controls.enabled = true;
+        renderer.domElement.addEventListener('touchend', (e) => {
+            if (e.touches.length === 0 && selectedHandle) {
+                // Do not deselect on touchend, keep selected until new selection or off-click
             }
         }, { passive: false });
 
