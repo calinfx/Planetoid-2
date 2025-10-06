@@ -6,7 +6,7 @@
     <title>3D Extrusion Tool</title>
     <style>
         body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
+        canvas { display: block; touch-action: none; }
         #ui {
             position: absolute;
             top: 10px;
@@ -97,12 +97,9 @@
         // Commit action
         commitButton.addEventListener('click', () => {
             alert('Shape committed!');
-            selectedHandles.forEach(handle => scene.remove(handle));
-            scene.remove(extrusionHandle);
-            selectedHandles = [];
         });
 
-        // Create rectangle with orange circle handles
+        // Create rectangle with handles
         function createRectangle(x1, z1, x2, z2) {
             const width = Math.abs(x2 - x1);
             const height = 0.01;
@@ -114,11 +111,11 @@
             rectangle.position.set((x1 + x2) / 2, 0, (z1 + z2) / 2);
             scene.add(rectangle);
 
-            // Add orange circle handles at corners
+            // Add corner handles (orange rings)
             const cornerHandleGeometry = new THREE.RingGeometry(0.1, 0.12, 32);
             const cornerHandleMaterial = new THREE.MeshBasicMaterial({ color: 0xff6600, side: THREE.DoubleSide });
 
-            // Add magenta circle handles at midpoints of edges
+            // Add edge handles (magenta rings)
             const edgeHandleGeometry = new THREE.RingGeometry(0.07, 0.09, 32);
             const edgeHandleMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide });
 
@@ -143,6 +140,7 @@
                 }
                 handle.position.set(pos.x, 0.02, pos.z);
                 handle.rotation.x = -Math.PI / 2;
+                handle.userData = { type: pos.type, originalColor: handle.material.color.getHex() };
                 scene.add(handle);
                 selectedHandles.push(handle);
             });
@@ -166,6 +164,12 @@
             const intersects = raycaster.intersectObjects(selectedHandles);
             if (intersects.length > 0) {
                 selectedHandle = intersects[0].object;
+                // Highlight selected handle
+                if (selectedHandle.userData.type === 'corner') {
+                    selectedHandle.material.color.setHex(0xcc5500); // Darker orange
+                } else {
+                    selectedHandle.material.color.setHex(0xcc00cc); // Darker magenta
+                }
                 controls.enabled = false;
             } else {
                 const extrusionIntersects = raycaster.intersectObject(extrusionHandle);
@@ -202,7 +206,11 @@
         }, { passive: false });
 
         renderer.domElement.addEventListener('touchend', () => {
-            selectedHandle = null;
+            if (selectedHandle) {
+                // Reset handle color
+                selectedHandle.material.color.setHex(selectedHandle.userData.originalColor);
+                selectedHandle = null;
+            }
             controls.enabled = true;
         }, { passive: false });
 
