@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xtro V0.1</title>
+    <title>Xtro V0.2</title>
     <style>
         body {
             margin: 0;
@@ -50,7 +50,7 @@
     </style>
 </head>
 <body>
-    <div id="version">v0.1</div>
+    <div id="version">v0.2</div>
     <button id="drawButton"></button>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
@@ -115,13 +115,11 @@
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(gridHelper);
-            if (intersects.length > 0) {
-                const intersect = intersects[0].point;
-                if (drawStart) {
-                    drawEnd = intersect.clone();
-                    updateTempRectangle();
-                }
+            const intersect = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, intersect);
+            if (drawStart) {
+                drawEnd = intersect.clone();
+                updateTempRectangle();
             }
         }
 
@@ -130,10 +128,9 @@
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(gridHelper);
-            if (intersects.length > 0) {
-                drawStart = intersects[0].point.clone();
-            }
+            const intersect = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, intersect);
+            drawStart = intersect.clone();
         }
 
         function onMouseUp() {
@@ -141,11 +138,10 @@
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(gridHelper);
-            if (intersects.length > 0) {
-                drawEnd = intersects[0].point.clone();
-                createRectangle(drawStart, drawEnd);
-            }
+            const intersect = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, intersect);
+            drawEnd = intersect.clone();
+            createRectangle(drawStart, drawEnd);
             drawStart = null;
             drawEnd = null;
             if (tempRectangle) {
@@ -190,22 +186,4 @@
             scene.add(rectangle);
         }
 
-        window.addEventListener('mousemove', onMouseMove, false);
-        window.addEventListener('mousedown', onMouseDown, false);
-        window.addEventListener('mouseup', onMouseUp, false);
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
-        animate();
-    </script>
-</body>
-</html>
+        window.addEventListener('mousemove', onMouseMove, false)
