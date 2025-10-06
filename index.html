@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Extrusion 3</title>
+    <title>3D Extrusion Tool</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -109,25 +109,38 @@
             const depth = Math.abs(z2 - z1);
 
             const geometry = new THREE.BoxGeometry(width, height, depth);
-            const material = new THREE.MeshBasicMaterial({ color: 0x0066ff });
+            const material = new THREE.MeshBasicMaterial({ color: 0x4B0082 }); // Dark purple
             rectangle = new THREE.Mesh(geometry, material);
             rectangle.position.set((x1 + x2) / 2, 0, (z1 + z2) / 2);
             scene.add(rectangle);
 
             // Add orange circle handles at corners
-            const handleGeometry = new THREE.CircleGeometry(0.1, 32);
-            const handleMaterial = new THREE.MeshBasicMaterial({ color: 0xff6600 });
+            const cornerHandleGeometry = new THREE.RingGeometry(0.1, 0.12, 32);
+            const cornerHandleMaterial = new THREE.MeshBasicMaterial({ color: 0xff6600, side: THREE.DoubleSide });
+
+            // Add magenta circle handles at midpoints of edges
+            const edgeHandleGeometry = new THREE.RingGeometry(0.07, 0.09, 32);
+            const edgeHandleMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide });
 
             const handlePositions = [
-                { x: x1, z: z1 },
-                { x: x2, z: z1 },
-                { x: x1, z: z2 },
-                { x: x2, z: z2 }
+                { x: x1, z: z1, type: 'corner' },
+                { x: x2, z: z1, type: 'corner' },
+                { x: x1, z: z2, type: 'corner' },
+                { x: x2, z: z2, type: 'corner' },
+                { x: (x1 + x2) / 2, z: z1, type: 'edge' },
+                { x: x2, z: (z1 + z2) / 2, type: 'edge' },
+                { x: (x1 + x2) / 2, z: z2, type: 'edge' },
+                { x: x1, z: (z1 + z2) / 2, type: 'edge' }
             ];
 
             selectedHandles = [];
             handlePositions.forEach(pos => {
-                const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+                let handle;
+                if (pos.type === 'corner') {
+                    handle = new THREE.Mesh(cornerHandleGeometry, cornerHandleMaterial);
+                } else {
+                    handle = new THREE.Mesh(edgeHandleGeometry, edgeHandleMaterial);
+                }
                 handle.position.set(pos.x, 0.02, pos.z);
                 handle.rotation.x = -Math.PI / 2;
                 scene.add(handle);
@@ -153,7 +166,7 @@
             const intersects = raycaster.intersectObjects(selectedHandles);
             if (intersects.length > 0) {
                 selectedHandle = intersects[0].object;
-                controls.enabled = false; // Disable orbit controls while dragging handles
+                controls.enabled = false;
             } else {
                 const extrusionIntersects = raycaster.intersectObject(extrusionHandle);
                 if (extrusionIntersects.length > 0) {
@@ -190,7 +203,7 @@
 
         renderer.domElement.addEventListener('touchend', () => {
             selectedHandle = null;
-            controls.enabled = true; // Re-enable orbit controls
+            controls.enabled = true;
         }, { passive: false });
 
         // Update rectangle geometry based on handle positions
