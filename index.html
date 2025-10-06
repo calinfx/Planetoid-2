@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Extro v0.1</title>
+    <title>Extro v0.2</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; touch-action: none; }
@@ -11,7 +11,7 @@
             position: absolute;
             top: 10px;
             left: 10px;
-            color: white;
+            color: #ff6600;
             background: rgba(0, 0, 0, 0.5);
             padding: 10px;
             border-radius: 5px;
@@ -41,7 +41,7 @@
             <button id="snapToggle">Snap: ON</button>
             <button id="commit">Commit</button>
         </div>
-        <div id="version">Version 0.1</div>
+        <div id="version">Version 0.2</div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
@@ -78,7 +78,7 @@
         const ambientLight = new THREE.AmbientLight(0x404040);
         scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        const directionalLight = new THREE.DirectionalLight(0xffff00, 0.5);
         directionalLight.position.set(1, 1, 1);
         scene.add(directionalLight);
 
@@ -87,6 +87,7 @@
         let extrusionHandle = null;
         let isSnapping = true;
         let selectedHandles = [];
+        let handleHitAreas = [];
         let selectedHandle = null;
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
@@ -116,48 +117,76 @@
             const geometry = new THREE.BoxGeometry(width, height, depth);
             const material = new THREE.MeshBasicMaterial({ color: 0x4B0082 });
             rectangle = new THREE.Mesh(geometry, material);
-            rectangle.position.set((x1 + x2) / 2, 0, (z1 + z2) / 2);
+            rectangle.position.set((x1 + x2) / 2, height / 2, (z1 + z2) / 2);
             scene.add(rectangle);
 
-            // Add corner handles (orange rings)
+            // Corner handles (orange rings)
             const cornerHandleGeometry = new THREE.RingGeometry(0.1, 0.12, 32);
             const cornerHandleMaterial = new THREE.MeshBasicMaterial({ color: 0xff6600, side: THREE.DoubleSide });
+            const cornerSelectedMaterial = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide });
 
-            // Add edge handles (magenta rings)
+            // Edge handles (magenta rings)
             const edgeHandleGeometry = new THREE.RingGeometry(0.07, 0.09, 32);
             const edgeHandleMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide });
+            const edgeSelectedMaterial = new THREE.MeshBasicMaterial({ color: 0xcc00cc, side: THREE.DoubleSide });
+
+            // Invisible hit area for better raycasting
+            const hitAreaGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+            const hitAreaMaterial = new THREE.MeshBasicMaterial({ visible: false });
 
             const handlePositions = [
-                { x: x1, z: z1, type: 'corner' },
-                { x: x2, z: z1, type: 'corner' },
-                { x: x1, z: z2, type: 'corner' },
-                { x: x2, z: z2, type: 'corner' },
-                { x: (x1 + x2) / 2, z: z1, type: 'edge' },
-                { x: x2, z: (z1 + z2) / 2, type: 'edge' },
-                { x: (x1 + x2) / 2, z: z2, type: 'edge' },
-                { x: x1, z: (z1 + z2) / 2, type: 'edge' }
+                { x: x1, z: z1, type: 'corner', index: 0 },
+                { x: x2, z: z1, type: 'corner', index: 1 },
+                { x: x1, z: z2, type: 'corner', index: 2 },
+                { x: x2, z: z2, type: 'corner', index: 3 },
+                { x: (x1 + x2) / 2, z: z1, type: 'edge', index: 4, edge: 'top' },
+                { x: x2, z: (z1 + z2) / 2, type: 'edge', index: 5, edge: 'right' },
+                { x: (x1 + x2) / 2, z: z2, type: 'edge', index: 6, edge: 'bottom' },
+                { x: x1, z: (z1 + z2) / 2, type: 'edge', index: 7, edge: 'left' }
             ];
 
             selectedHandles = [];
+            handleHitAreas = [];
             handlePositions.forEach(pos => {
-                let handle;
+                let handle, hitArea;
                 if (pos.type === 'corner') {
                     handle = new THREE.Mesh(cornerHandleGeometry, cornerHandleMaterial);
+                    handle.userData = { 
+                        type: pos.type, 
+                        index: pos.index, 
+                        originalMaterial: cornerHandleMaterial, 
+                        selectedMaterial: cornerSelectedMaterial 
+                    };
                 } else {
                     handle = new THREE.Mesh(edgeHandleGeometry, edgeHandleMaterial);
+                    handle.userData = { 
+                        type: pos.type, 
+                        index: pos.index, 
+                        edge: pos.edge, 
+                        originalMaterial: edgeHandleMaterial, 
+                        selectedMaterial: edgeSelectedMaterial 
+                    };
                 }
                 handle.position.set(pos.x, 0.02, pos.z);
                 handle.rotation.x = -Math.PI / 2;
-                handle.userData = { type: pos.type, originalColor: handle.material.color.getHex() };
                 scene.add(handle);
                 selectedHandles.push(handle);
+
+                // Add invisible hit area
+                hitArea = new THREE.Mesh(hitAreaGeometry, hitAreaMaterial);
+                hitArea.position.set(pos.x, 0.02, pos.z);
+                hitArea.userData = { linkedHandle: handle };
+                scene.add(hitArea);
+                handleHitAreas.push(hitArea);
             });
 
-            // Add extrusion handle (neon green cube, no wireframe)
-            const extrusionGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-            const extrusionMaterial = new THREE.MeshBasicMaterial({ color: 0x32CD32 });
-            extrusionHandle = new THREE.Mesh(extrusionGeometry, extrusionMaterial);
-            extrusionHandle.position.set((x1 + x2) / 2, 0.1, (z1 + z2) / 2);
+            // Extrusion handle (lemon green wireframe, no diagonals)
+            const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.2, 0.2, 0.2), 1);
+            const extrusionMaterial = new THREE.LineBasicMaterial({ color: 0x32CD32 });
+            const selectedExtrusionMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
+            extrusionHandle = new THREE.LineSegments(edges, extrusionMaterial);
+            extrusionHandle.position.set((x1 + x2) / 2, height, (z1 + z2) / 2);
+            extrusionHandle.userData = { originalMaterial: extrusionMaterial, selectedMaterial: selectedExtrusionMaterial };
             scene.add(extrusionHandle);
         }
 
@@ -170,15 +199,12 @@
             mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects([...selectedHandles, extrusionHandle]);
+            const intersects = raycaster.intersectObjects([...handleHitAreas, extrusionHandle]);
             if (intersects.length > 0) {
-                selectedHandle = intersects[0].object;
-                if (selectedHandle === extrusionHandle) {
-                    selectedHandle.material.color.setHex(0xff6600); // Orange when selected
-                } else {
-                    selectedHandle.material.color.setHex(selectedHandle.userData.type === 'corner' ? 0xcc5500 : 0xcc00cc);
-                }
-                controls.enabled = false; // Disable orbit controls while dragging
+                const obj = intersects[0].object;
+                selectedHandle = obj.userData.linkedHandle || obj;
+                selectedHandle.material = selectedHandle.userData.selectedMaterial;
+                controls.enabled = false;
             }
         }, { passive: false });
 
@@ -193,22 +219,20 @@
             const intersects = raycaster.intersectObject(plane);
             if (intersects.length > 0) {
                 let point = intersects[0].point;
-                
-                // Apply snapping if enabled
                 if (isSnapping) {
                     point.x = Math.round(point.x);
                     point.z = Math.round(point.z);
                 }
 
                 if (selectedHandle === extrusionHandle) {
-                    // Extrude the rectangle
-                    const height = Math.max(0.01, point.y); // Prevent negative height
-                    rectangle.scale.y = height;
+                    const height = Math.max(0.01, point.y);
+                    rectangle.scale.y = height / rectangle.geometry.parameters.height;
                     rectangle.position.y = height / 2;
                     selectedHandle.position.set(rectangle.position.x, height, rectangle.position.z);
                 } else {
-                    // Move the handle
                     selectedHandle.position.set(point.x, 0.02, point.z);
+                    const linkedHitArea = handleHitAreas.find(hit => hit.userData.linkedHandle === selectedHandle);
+                    if (linkedHitArea) linkedHitArea.position.copy(selectedHandle.position);
                     updateRectangle();
                 }
             }
@@ -216,31 +240,53 @@
 
         renderer.domElement.addEventListener('touchend', () => {
             if (selectedHandle) {
-                selectedHandle.material.color.setHex(selectedHandle.userData.originalColor || 0x32CD32);
+                selectedHandle.material = selectedHandle.userData.originalMaterial;
                 selectedHandle = null;
-                controls.enabled = true; // Re-enable orbit controls
+                controls.enabled = true;
             }
         }, { passive: false });
 
         // Update rectangle geometry
         function updateRectangle() {
-            const handlePositions = selectedHandles.map(handle => handle.position);
-            const xPositions = handlePositions.map(pos => pos.x);
-            const zPositions = handlePositions.map(pos => pos.z);
+            const cornerHandles = selectedHandles.filter(h => h.userData.type === 'corner');
+            const xPositions = cornerHandles.map(h => h.position.x);
+            const zPositions = cornerHandles.map(h => h.position.z);
             const minX = Math.min(...xPositions);
             const maxX = Math.max(...xPositions);
             const minZ = Math.min(...zPositions);
             const maxZ = Math.max(...zPositions);
 
-            const width = Math.max(0.01, maxX - minX); // Prevent zero width
-            const depth = Math.max(0.01, maxZ - minZ); // Prevent zero depth
+            const width = Math.max(0.01, maxX - minX);
+            const depth = Math.max(0.01, maxZ - minZ);
+            const height = rectangle.scale.y * rectangle.geometry.parameters.height;
 
             rectangle.geometry.dispose();
-            rectangle.geometry = new THREE.BoxGeometry(width, rectangle.scale.y, depth);
-            rectangle.position.set((minX + maxX) / 2, rectangle.position.y, (minZ + maxZ) / 2);
+            rectangle.geometry = new THREE.BoxGeometry(width, height, depth);
+            rectangle.position.set((minX + maxX) / 2, height / 2, (minZ + maxZ) / 2);
 
-            // Update extrusion handle position
-            extrusionHandle.position.set((minX + maxX) / 2, rectangle.scale.y, (minZ + maxZ) / 2);
+            // Update edge handles
+            const edgeHandles = selectedHandles.filter(h => h.userData.type === 'edge');
+            edgeHandles.forEach(handle => {
+                switch (handle.userData.edge) {
+                    case 'top':
+                        handle.position.set((minX + maxX) / 2, 0.02, minZ);
+                        break;
+                    case 'right':
+                        handle.position.set(maxX, 0.02, (minZ + maxZ) / 2);
+                        break;
+                    case 'bottom':
+                        handle.position.set((minX + maxX) / 2, 0.02, maxZ);
+                        break;
+                    case 'left':
+                        handle.position.set(minX, 0.02, (minZ + maxZ) / 2);
+                        break;
+                }
+                const linkedHitArea = handleHitAreas.find(hit => hit.userData.linkedHandle === handle);
+                if (linkedHitArea) linkedHitArea.position.copy(handle.position);
+            });
+
+            // Update extrusion handle
+            extrusionHandle.position.set((minX + maxX) / 2, height, (minZ + maxZ) / 2);
         }
 
         // Animation loop
