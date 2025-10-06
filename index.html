@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Extro v0.5</title>
+    <title>Extro v0.01</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; touch-action: none; }
@@ -11,7 +11,7 @@
             position: absolute;
             top: 10px;
             left: 10px;
-            color: #ff6600;
+            color: white;
             background: rgba(0, 0, 0, 0.5);
             padding: 10px;
             border-radius: 5px;
@@ -19,6 +19,14 @@
             z-index: 100;
             display: flex;
             flex-direction: column;
+            gap: 10px;
+        }
+        #version {
+            font-size: 12px;
+            text-align: center;
+        }
+        #buttons {
+            display: flex;
             gap: 10px;
         }
         button {
@@ -29,26 +37,22 @@
             border-radius: 3px;
             cursor: pointer;
         }
-        #version {
-            font-size: 12px;
-            color: #ff6600;
-        }
     </style>
 </head>
 <body>
     <div id="ui">
-        <div>
+        <div id="buttons">
             <button id="snapToggle">Snap: ON</button>
             <button id="commit">Commit</button>
         </div>
-        <div id="version">Version 0.5</div>
+        <div id="version">v0.01</div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000000);
+        scene.background = new THREE.Color(0x000000); // Black background
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(5, 5, 5);
@@ -57,7 +61,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // OrbitControls
+        // OrbitControls for mobile-friendly camera movement
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.25;
@@ -67,7 +71,7 @@
         controls.maxPolarAngle = Math.PI;
 
         // Grid and axes
-        const gridHelper = new THREE.GridHelper(10, 10, 0x660066, 0x330033);
+        const gridHelper = new THREE.GridHelper(10, 10, 0x660066, 0x330033); // Violet grid
         scene.add(gridHelper);
 
         const axesHelper = new THREE.AxesHelper(5);
@@ -75,26 +79,23 @@
         scene.add(axesHelper);
 
         // Lighting
-        const ambientLight = new THREE.AmbientLight(0x402040);
+        const ambientLight = new THREE.AmbientLight(0x404040);
         scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffff00, 0.5);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
         directionalLight.position.set(1, 1, 1);
         scene.add(directionalLight);
 
-        // Variables
+        // Variables for rectangle and handles
         let rectangle = null;
         let extrusionHandle = null;
+        let extrusionLine = null;
         let isSnapping = true;
         let selectedHandles = [];
-        let handleHitAreas = [];
         let selectedHandle = null;
-        let guideLines = [];
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         let plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        let initialMouse = new THREE.Vector2();
-        let initialHeight = 0;
 
         // UI Elements
         const snapToggle = document.getElementById('snapToggle');
@@ -111,15 +112,6 @@
             alert('Shape committed!');
         });
 
-        // Create guide line
-        function createGuideLine(start, direction) {
-            const material = new THREE.LineBasicMaterial({ color: 0x40E0D0 }); // Turquoise
-            const geometry = new THREE.BufferGeometry().setFromPoints([start, new THREE.Vector3(1000, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), direction)]);
-            const line = new THREE.Line(geometry, material);
-            scene.add(line);
-            return line;
-        }
-
         // Create rectangle with handles
         function createRectangle(x1, z1, x2, z2) {
             const width = Math.abs(x2 - x1);
@@ -127,272 +119,146 @@
             const depth = Math.abs(z2 - z1);
 
             const geometry = new THREE.BoxGeometry(width, height, depth);
-            const material = new THREE.MeshBasicMaterial({ color: 0x4B0082 });
+            const material = new THREE.MeshBasicMaterial({ color: 0x4B0082 }); // Dark purple
             rectangle = new THREE.Mesh(geometry, material);
-            rectangle.position.set((x1 + x2) / 2, height / 2, (z1 + z2) / 2);
+            rectangle.position.set((x1 + x2) / 2, 0, (z1 + z2) / 2);
             scene.add(rectangle);
 
-            // Handle geometries and materials
-            const cornerRingGeometry = new THREE.RingGeometry(0.1, 0.12, 32);
-            const cornerFilledGeometry = new THREE.CircleGeometry(0.12, 32);
-            const cornerMaterial = new THREE.MeshBasicMaterial({ color: 0xff6600, side: THREE.DoubleSide });
-            const cornerSelectedMaterial = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide });
+            // Add corner handles (orange rings)
+            const cornerHandleGeometry = new THREE.RingGeometry(0.1, 0.12, 32);
+            const cornerHandleMaterial = new THREE.MeshBasicMaterial({ color: 0xff6600, side: THREE.DoubleSide });
 
-            const edgeRingGeometry = new THREE.RingGeometry(0.07, 0.09, 32);
-            const edgeFilledGeometry = new THREE.CircleGeometry(0.09, 32);
-            const edgeMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide });
-            const edgeSelectedMaterial = new THREE.MeshBasicMaterial({ color: 0xcc00cc, side: THREE.DoubleSide });
-
-            // Hit areas
-            const cornerHitGeometry = new THREE.SphereGeometry(0.12, 16, 16);
-            const edgeHitGeometry = new THREE.SphereGeometry(0.09, 16, 16);
-            const hitAreaMaterial = new THREE.MeshBasicMaterial({ visible: false });
+            // Add edge handles (magenta rings)
+            const edgeHandleGeometry = new THREE.RingGeometry(0.07, 0.09, 32);
+            const edgeHandleMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide });
 
             const handlePositions = [
-                { x: x1, z: z1, type: 'corner', index: 0 }, // bottom-left
-                { x: x2, z: z1, type: 'corner', index: 1 }, // bottom-right
-                { x: x1, z: z2, type: 'corner', index: 2 }, // top-left
-                { x: x2, z: z2, type: 'corner', index: 3 }, // top-right
-                { x: (x1 + x2) / 2, z: z1, type: 'edge', index: 4, edge: 'bottom' },
-                { x: x2, z: (z1 + z2) / 2, type: 'edge', index: 5, edge: 'right' },
-                { x: (x1 + x2) / 2, z: z2, type: 'edge', index: 6, edge: 'top' },
-                { x: x1, z: (z1 + z2) / 2, type: 'edge', index: 7, edge: 'left' }
+                { x: x1, z: z1, type: 'corner' },
+                { x: x2, z: z1, type: 'corner' },
+                { x: x1, z: z2, type: 'corner' },
+                { x: x2, z: z2, type: 'corner' },
+                { x: (x1 + x2) / 2, z: z1, type: 'edge' },
+                { x: x2, z: (z1 + z2) / 2, type: 'edge' },
+                { x: (x1 + x2) / 2, z: z2, type: 'edge' },
+                { x: x1, z: (z1 + z2) / 2, type: 'edge' }
             ];
 
             selectedHandles = [];
-            handleHitAreas = [];
             handlePositions.forEach(pos => {
-                let handle, hitGeometry, ringGeometry, filledGeometry, normalMaterial, selectedMaterial;
+                let handle;
                 if (pos.type === 'corner') {
-                    ringGeometry = cornerRingGeometry;
-                    filledGeometry = cornerFilledGeometry;
-                    normalMaterial = cornerMaterial;
-                    selectedMaterial = cornerSelectedMaterial;
-                    hitGeometry = cornerHitGeometry;
+                    handle = new THREE.Mesh(cornerHandleGeometry, cornerHandleMaterial);
                 } else {
-                    ringGeometry = edgeRingGeometry;
-                    filledGeometry = edgeFilledGeometry;
-                    normalMaterial = edgeMaterial;
-                    selectedMaterial = edgeSelectedMaterial;
-                    hitGeometry = edgeHitGeometry;
+                    handle = new THREE.Mesh(edgeHandleGeometry, edgeHandleMaterial);
                 }
-                handle = new THREE.Mesh(ringGeometry, normalMaterial);
                 handle.position.set(pos.x, 0.02, pos.z);
                 handle.rotation.x = -Math.PI / 2;
-                handle.userData = { 
-                    type: pos.type, 
-                    index: pos.index, 
-                    edge: pos.edge, 
-                    originalGeometry: ringGeometry, 
-                    selectedGeometry: filledGeometry, 
-                    originalMaterial: normalMaterial, 
-                    selectedMaterial: selectedMaterial 
-                };
+                handle.userData = { type: pos.type, originalColor: handle.material.color.getHex() };
                 scene.add(handle);
                 selectedHandles.push(handle);
-
-                // Add invisible hit area
-                const hitArea = new THREE.Mesh(hitGeometry, hitAreaMaterial);
-                hitArea.position.set(pos.x, 0.02, pos.z);
-                hitArea.userData = { linkedHandle: handle };
-                scene.add(hitArea);
-                handleHitAreas.push(hitArea);
             });
 
-            // Extrusion handle (lemon green wireframe)
-            const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.2, 0.2, 0.2));
+            // Add extrusion handle (neon green cube)
+            const extrusionGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+            const extrusionEdges = new THREE.EdgesGeometry(extrusionGeometry);
+            const extrusionLineGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 10, 0)]);
             const extrusionMaterial = new THREE.LineBasicMaterial({ color: 0x32CD32 });
-            const selectedExtrusionMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
-            extrusionHandle = new THREE.LineSegments(edges, extrusionMaterial);
-            extrusionHandle.position.set((x1 + x2) / 2, height + 0.1, (z1 + z2) / 2);
-            extrusionHandle.userData = { originalMaterial: extrusionMaterial, selectedMaterial: selectedExtrusionMaterial };
+            extrusionHandle = new THREE.LineSegments(extrusionEdges, new THREE.LineBasicMaterial({ color: 0x32CD32 }));
+            extrusionHandle.position.set((x1 + x2) / 2, 0.1, (z1 + z2) / 2);
             scene.add(extrusionHandle);
+
+            extrusionLine = new THREE.Line(extrusionLineGeometry, extrusionMaterial);
+            extrusionLine.position.set((x1 + x2) / 2, 0, (z1 + z2) / 2);
+            scene.add(extrusionLine);
         }
 
-        // Update rectangle edges brightness
-        function updateEdgeBrightness(selectedIndex) {
-            const edgeMaterial = rectangle.material;
-            if (edgeMaterial instanceof THREE.MeshBasicMaterial) {
-                const baseColor = new THREE.Color(0x4B0082); // Original color
-                const brightColor = baseColor.clone().multiplyScalar(1.5).clamp(0, 1); // Brighten by 50%
-                edgeMaterial.color = selectedIndex !== null ? brightColor : baseColor;
-            }
-        }
-
-        // Update guide lines
-        function updateGuideLines(selectedHandle) {
-            guideLines.forEach(line => scene.remove(line));
-            guideLines = [];
-            if (selectedHandle && selectedHandle.userData.type !== 'corner') {
-                const pos = selectedHandle.position.clone();
-                const edge = selectedHandle.userData.edge;
-                const dir = edge === 'left' || edge === 'right' ? Math.PI / 2 : 0;
-                const line1 = createGuideLine(pos, dir);
-                const line2 = createGuideLine(pos, dir + Math.PI);
-                guideLines.push(line1, line2);
-            } else if (selectedHandle && selectedHandle.userData.type === 'corner') {
-                const pos = selectedHandle.position.clone();
-                const line1 = createGuideLine(pos, 0); // Along x-axis
-                const line2 = createGuideLine(pos, Math.PI / 2); // Along z-axis
-                guideLines.push(line1, line2);
-            }
-        }
-
-        // Touch controls
+        // Touch controls for mobile
         renderer.domElement.addEventListener('touchstart', (e) => {
-            if (e.touches.length !== 1) return;
+            if (e.touches.length === 2) return; // Ignore if two fingers are touching (pinch zoom)
             e.preventDefault();
             const touch = e.touches[0];
             mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects([...handleHitAreas, extrusionHandle]);
+            const intersects = raycaster.intersectObjects(selectedHandles);
             if (intersects.length > 0) {
-                const obj = intersects[0].object;
-                const handle = obj.userData.linkedHandle || obj;
-                if (handle !== selectedHandle) {
-                    if (selectedHandle) {
-                        selectedHandle.geometry = selectedHandle.userData.originalGeometry;
-                        selectedHandle.material = selectedHandle.userData.originalMaterial;
-                        updateEdgeBrightness(null);
-                        updateGuideLines(null);
-                    }
-                    selectedHandle = handle;
-                    selectedHandle.geometry = selectedHandle.userData.selectedGeometry;
-                    selectedHandle.material = selectedHandle.userData.selectedMaterial;
-                    updateEdgeBrightness(selectedHandle.userData.index);
-                    updateGuideLines(selectedHandle);
-                    initialMouse.copy(mouse);
-                    initialHeight = rectangle.geometry.parameters.height;
+                selectedHandle = intersects[0].object;
+                // Highlight selected handle
+                if (selectedHandle.userData.type === 'corner') {
+                    selectedHandle.material.color.setHex(0xcc5500); // Darker orange
+                } else {
+                    selectedHandle.material.color.setHex(0xcc00cc); // Darker magenta
                 }
-            } else if (selectedHandle) {
-                selectedHandle.geometry = selectedHandle.userData.originalGeometry;
-                selectedHandle.material = selectedHandle.userData.originalMaterial;
-                updateEdgeBrightness(null);
-                updateGuideLines(null);
-                selectedHandle = null;
+            } else {
+                const extrusionIntersects = raycaster.intersectObject(extrusionHandle);
+                if (extrusionIntersects.length > 0) {
+                    selectedHandle = extrusionHandle;
+                    extrusionHandle.material.color.setHex(0xff6600); // Orange
+                    extrusionLine.material.color.setHex(0xff6600); // Orange
+                }
             }
         }, { passive: false });
 
         renderer.domElement.addEventListener('touchmove', (e) => {
-            if (e.touches.length !== 1 || !selectedHandle) return;
+            if (e.touches.length === 2) return; // Ignore if two fingers are touching (pinch zoom)
             e.preventDefault();
-            const touch = e.touches[0];
-            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+            if (selectedHandle) {
+                const touch = e.touches[0];
+                mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
-            if (selectedHandle === extrusionHandle) {
-                const pos = extrusionHandle.position.clone();
-                const posScreen = pos.clone().project(camera);
-                const posYScreen = pos.clone().add(new THREE.Vector3(0, 1, 0)).project(camera);
-                const dirScreen = posYScreen.clone().sub(posScreen);
-                const unitLength = dirScreen.length();
-                if (unitLength === 0) return;
-                dirScreen.normalize();
-                const mouseDelta = mouse.clone().sub(initialMouse);
-                const projDelta = mouseDelta.dot(dirScreen);
-                const worldDelta = projDelta / unitLength;
-                let newHeight = Math.max(0.01, initialHeight + worldDelta);
-
-                const currentWidth = rectangle.geometry.parameters.width;
-                const currentDepth = rectangle.geometry.parameters.depth;
-                rectangle.geometry.dispose();
-                rectangle.geometry = new THREE.BoxGeometry(currentWidth, newHeight, currentDepth);
-                rectangle.position.y = newHeight / 2;
-                extrusionHandle.position.y = newHeight + 0.1;
-            } else {
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObject(plane);
                 if (intersects.length > 0) {
-                    let point = intersects[0].point;
-                    if (isSnapping) {
-                        point.x = Math.round(point.x);
-                        point.z = Math.round(point.z);
-                    }
-                    if (selectedHandle.userData.type === 'corner') {
-                        selectedHandle.position.set(point.x, 0.02, point.z);
+                    const point = intersects[0].point;
+                    if (selectedHandle === extrusionHandle) {
+                        // Extrude the rectangle
+                        const height = point.y;
+                        rectangle.scale.y = height;
+                        rectangle.position.y = height / 2;
                     } else {
-                        const edge = selectedHandle.userData.edge;
-                        let newVal = (edge === 'left' || edge === 'right') ? point.x : point.z;
-                        if (edge === 'left' || edge === 'right') {
-                            selectedHandle.position.x = newVal;
-                        } else {
-                            selectedHandle.position.z = newVal;
-                        }
-                        let cornerIndices;
-                        switch (edge) {
-                            case 'left': cornerIndices = [0, 2]; break;
-                            case 'right': cornerIndices = [1, 3]; break;
-                            case 'top': cornerIndices = [2, 3]; break;
-                            case 'bottom': cornerIndices = [0, 1]; break;
-                        }
-                        cornerIndices.forEach(idx => {
-                            const corner = selectedHandles[idx];
-                            if (edge === 'left' || edge === 'right') {
-                                corner.position.x = newVal;
-                            } else {
-                                corner.position.z = newVal;
-                            }
-                            const cornerHit = handleHitAreas.find(h => h.userData.linkedHandle === corner);
-                            if (cornerHit) cornerHit.position.copy(corner.position);
-                        });
+                        // Move the handle and resize the rectangle
+                        selectedHandle.position.set(point.x, 0.02, point.z);
+                        updateRectangle();
                     }
-                    const linkedHit = handleHitAreas.find(h => h.userData.linkedHandle === selectedHandle);
-                    if (linkedHit) linkedHit.position.copy(selectedHandle.position);
-                    updateRectangle();
-                    updateGuideLines(selectedHandle);
                 }
             }
         }, { passive: false });
 
-        renderer.domElement.addEventListener('touchend', (e) => {
-            if (e.touches.length === 0 && selectedHandle) {
-                // Do not deselect on touchend, keep selected until new selection or off-click
+        renderer.domElement.addEventListener('touchend', () => {
+            if (selectedHandle) {
+                // Reset handle color
+                if (selectedHandle !== extrusionHandle) {
+                    selectedHandle.material.color.setHex(selectedHandle.userData.originalColor);
+                } else {
+                    extrusionHandle.material.color.setHex(0x32CD32); // Neon green
+                    extrusionLine.material.color.setHex(0x32CD32); // Neon green
+                }
+                selectedHandle = null;
             }
         }, { passive: false });
 
-        // Update rectangle geometry
+        // Update rectangle geometry based on handle positions
         function updateRectangle() {
-            const cornerHandles = selectedHandles.filter(h => h.userData.type === 'corner');
-            const xPositions = cornerHandles.map(h => h.position.x);
-            const zPositions = cornerHandles.map(h => h.position.z);
+            const handlePositions = selectedHandles.map(handle => handle.position);
+            const xPositions = handlePositions.map(pos => pos.x);
+            const zPositions = handlePositions.map(pos => pos.z);
             const minX = Math.min(...xPositions);
             const maxX = Math.max(...xPositions);
             const minZ = Math.min(...zPositions);
             const maxZ = Math.max(...zPositions);
 
-            const width = Math.max(0.01, maxX - minX);
-            const depth = Math.max(0.01, maxZ - minZ);
-            const height = rectangle.geometry.parameters.height;
+            const width = maxX - minX;
+            const depth = maxZ - minZ;
 
             rectangle.geometry.dispose();
-            rectangle.geometry = new THREE.BoxGeometry(width, height, depth);
-            rectangle.position.set((minX + maxX) / 2, height / 2, (minZ + maxZ) / 2);
-
-            // Update edge handles positions
-            const edgeHandles = selectedHandles.filter(h => h.userData.type === 'edge');
-            edgeHandles.forEach(handle => {
-                switch (handle.userData.edge) {
-                    case 'bottom':
-                        handle.position.set((minX + maxX) / 2, 0.02, minZ);
-                        break;
-                    case 'right':
-                        handle.position.set(maxX, 0.02, (minZ + maxZ) / 2);
-                        break;
-                    case 'top':
-                        handle.position.set((minX + maxX) / 2, 0.02, maxZ);
-                        break;
-                    case 'left':
-                        handle.position.set(minX, 0.02, (minZ + maxZ) / 2);
-                        break;
-                }
-                const linkedHit = handleHitAreas.find(h => h.userData.linkedHandle === handle);
-                if (linkedHit) linkedHit.position.copy(handle.position);
-            });
+            rectangle.geometry = new THREE.BoxGeometry(width, rectangle.scale.y, depth);
+            rectangle.position.set((minX + maxX) / 2, rectangle.position.y, (minZ + maxZ) / 2);
 
             // Update extrusion handle position
-            extrusionHandle.position.set(rectangle.position.x, height + 0.1, rectangle.position.z);
+            extrusionHandle.position.set((minX + maxX) / 2, 0.1, (minZ + maxZ) / 2);
+            extrusionLine.position.set((minX + maxX) / 2, 0, (minZ + maxZ) / 2);
         }
 
         // Animation loop
@@ -412,7 +278,7 @@
         // Start animation
         animate();
 
-        // Create initial rectangle
+        // Example: Create a rectangle
         createRectangle(-1, -1, 1, 1);
     </script>
 </body>
