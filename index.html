@@ -17,13 +17,14 @@
             border-radius: 5px;
             font-family: Arial, sans-serif;
             z-index: 100;
+            display: flex;
+            gap: 10px;
         }
         button {
             background: #ff6600;
             color: black;
             border: none;
             padding: 5px 10px;
-            margin: 5px;
             border-radius: 3px;
             cursor: pointer;
         }
@@ -35,6 +36,7 @@
         <button id="commit">Commit</button>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
@@ -46,6 +48,15 @@
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
+
+        // OrbitControls for mobile-friendly camera movement
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.25;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 1;
+        controls.maxDistance = 50;
+        controls.maxPolarAngle = Math.PI;
 
         // Grid and axes
         const gridHelper = new THREE.GridHelper(10, 10, 0x660066, 0x330033); // Violet grid
@@ -142,6 +153,7 @@
             const intersects = raycaster.intersectObjects(selectedHandles);
             if (intersects.length > 0) {
                 selectedHandle = intersects[0].object;
+                controls.enabled = false; // Disable orbit controls while dragging handles
             }
         }, { passive: false });
 
@@ -163,11 +175,13 @@
 
         renderer.domElement.addEventListener('touchend', () => {
             selectedHandle = null;
+            controls.enabled = true; // Re-enable orbit controls
         }, { passive: false });
 
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
+            controls.update();
             renderer.render(scene, camera);
         }
 
