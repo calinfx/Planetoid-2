@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Extro v1.1</title>
+    <title>Extro v1.2</title>
     <style>
         body {
             margin: 0;
@@ -52,7 +52,7 @@
     </style>
 </head>
 <body>
-    <div id="version">v1.1</div>
+    <div id="version">v1.2</div>
     <button id="deleteButton">DELETE</button>
     <button id="drawButton"></button>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
@@ -89,7 +89,6 @@
 
         // Cubes and handles
         let cubes = [];
-        let gimbals = [];
         let isDrawing = false;
         let drawStart = null;
         let drawEnd = null;
@@ -113,8 +112,6 @@
         deleteButton.addEventListener('click', () => {
             cubes.forEach(cube => scene.remove(cube));
             cubes = [];
-            gimbals.forEach(gimbal => scene.remove(gimbal));
-            gimbals = [];
         });
 
         function onTouchStart(event) {
@@ -182,7 +179,6 @@
             const x = Math.min(start.x, end.x) + width / 2;
             const z = Math.min(start.z, end.z) + height / 2;
 
-            // Create cube with darker color and orange wireframe
             const cubeGeometry = new THREE.BoxGeometry(width, 1, height);
             const cubeMaterial = new THREE.MeshPhongMaterial({
                 color: 0x333333,
@@ -200,27 +196,6 @@
             cube.add(cubeLine);
             scene.add(cube);
             cubes.push(cube);
-
-            // Create gimbals at the center of each facet
-            const gimbalGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-            const gimbalEdges = new THREE.EdgesGeometry(gimbalGeometry);
-            const gimbalMaterial = new THREE.LineBasicMaterial({ color: 0xff8c00 });
-
-            const centers = [
-                { x: x - width/2, y: 0.5, z: z },
-                { x: x + width/2, y: 0.5, z: z },
-                { x: x, y: 0.5, z: z - height/2 },
-                { x: x, y: 0.5, z: z + height/2 },
-                { x: x, y: 1, z: z },
-                { x: x, y: 0, z: z }
-            ];
-
-            centers.forEach(center => {
-                const gimbal = new THREE.LineSegments(gimbalEdges, gimbalMaterial);
-                gimbal.position.set(center.x, center.y, center.z);
-                scene.add(gimbal);
-                gimbals.push(gimbal);
-            });
         }
 
         window.addEventListener('touchstart', onTouchStart, { passive: false });
