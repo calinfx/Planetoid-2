@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Extrusion Tool</title>
+    <title>Extro v1.1</title>
     <style>
         body {
             margin: 0;
@@ -185,7 +185,7 @@
             // Create cube with darker color and orange wireframe
             const cubeGeometry = new THREE.BoxGeometry(width, 1, height);
             const cubeMaterial = new THREE.MeshPhongMaterial({
-                color: 0x333333, // Darker color
+                color: 0x333333,
                 specular: 0x111111,
                 shininess: 1,
                 wireframe: false
@@ -206,14 +206,13 @@
             const gimbalEdges = new THREE.EdgesGeometry(gimbalGeometry);
             const gimbalMaterial = new THREE.LineBasicMaterial({ color: 0xff8c00 });
 
-            // Facet centers
             const centers = [
-                { x: x - width/2, y: 0.5, z: z }, // Left
-                { x: x + width/2, y: 0.5, z: z }, // Right
-                { x: x, y: 0.5, z: z - height/2 }, // Front
-                { x: x, y: 0.5, z: z + height/2 }, // Back
-                { x: x, y: 1, z: z }, // Top
-                { x: x, y: 0, z: z }  // Bottom
+                { x: x - width/2, y: 0.5, z: z },
+                { x: x + width/2, y: 0.5, z: z },
+                { x: x, y: 0.5, z: z - height/2 },
+                { x: x, y: 0.5, z: z + height/2 },
+                { x: x, y: 1, z: z },
+                { x: x, y: 0, z: z }
             ];
 
             centers.forEach(center => {
