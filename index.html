@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xtro V0.6</title>
+    <title>Xtro V0.7 (Debug)</title>
     <style>
         body {
             margin: 0;
@@ -50,7 +50,7 @@
     </style>
 </head>
 <body>
-    <div id="version">v0.6</div>
+    <div id="version">v0.7</div>
     <button id="drawButton"></button>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
@@ -104,6 +104,7 @@
             isDrawing = !isDrawing;
             drawButton.classList.toggle('active', isDrawing);
             controls.enabled = !isDrawing;
+            console.log("Draw mode:", isDrawing ? "ON" : "OFF");
             if (!isDrawing) {
                 if (tempRectangle) {
                     scene.remove(tempRectangle);
@@ -114,31 +115,41 @@
             }
         });
 
-        function onMouseMove(event) {
-            if (!isDrawing || !drawStart) return;
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-            const intersect = new THREE.Vector3();
-            raycaster.ray.intersectPlane(plane, intersect);
-            drawEnd = intersect.clone();
-            updateTempRectangle();
-        }
-
         function onMouseDown(event) {
+            console.log("Mouse down, isDrawing:", isDrawing);
             if (!isDrawing) return;
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
             const intersect = new THREE.Vector3();
-            raycaster.ray.intersectPlane(plane, intersect);
-            drawStart = intersect.clone();
-            drawEnd = intersect.clone();
-            updateTempRectangle();
+            const hitPlane = raycaster.ray.intersectPlane(plane, intersect);
+            console.log("Intersection point:", intersect);
+            if (hitPlane) {
+                drawStart = intersect.clone();
+                drawEnd = intersect.clone();
+                console.log("Draw start set to:", drawStart);
+                updateTempRectangle();
+            }
+        }
+
+        function onMouseMove(event) {
+            if (!isDrawing || !drawStart) return;
+            console.log("Mouse move, isDrawing:", isDrawing);
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersect = new THREE.Vector3();
+            const hitPlane = raycaster.ray.intersectPlane(plane, intersect);
+            console.log("Moving to:", intersect);
+            if (hitPlane) {
+                drawEnd = intersect.clone();
+                updateTempRectangle();
+            }
         }
 
         function onMouseUp() {
             if (!isDrawing || !drawStart) return;
+            console.log("Mouse up, creating rectangle");
             createRectangle(drawStart, drawEnd);
             drawStart = null;
             drawEnd = null;
@@ -149,6 +160,7 @@
         }
 
         function updateTempRectangle() {
+            console.log("Updating temp rectangle, start:", drawStart, "end:", drawEnd);
             if (!drawStart || !drawEnd) return;
             if (tempRectangle) scene.remove(tempRectangle);
 
@@ -166,9 +178,11 @@
             tempRectangle = new THREE.Mesh(geometry, material);
             tempRectangle.position.set(x, 0.05, z);
             scene.add(tempRectangle);
+            console.log("Temp rectangle updated");
         }
 
         function createRectangle(start, end) {
+            console.log("Creating rectangle from:", start, "to:", end);
             const width = Math.abs(end.x - start.x);
             const height = Math.abs(end.z - start.z);
             const x = Math.min(start.x, end.x) + width / 2;
@@ -182,6 +196,7 @@
             const rectangle = new THREE.Mesh(geometry, material);
             rectangle.position.set(x, 0.05, z);
             scene.add(rectangle);
+            console.log("Rectangle created");
         }
 
         window.addEventListener('mousemove', onMouseMove, false);
